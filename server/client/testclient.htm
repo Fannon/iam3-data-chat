@@ -1,0 +1,192 @@
+<html>
+    <head>
+        <title>Chat Client DEMO</title>
+        <!-- Nur zum schnellen Testen des Servers gedacht -->
+        <!-- Code teilweise von: http://elegantcode.com/2011/05/04/taking-baby-steps-with-node-js-websockets/ -->
+    </head>
+    <body>
+
+        <h1>Chat Client DEMO (Servertest)</h1>
+        <h3>Gibt nur die JSON Strings aus, ohne Formatierung!</h3>
+        <div>
+            <p>
+                <input type="text" id="messageText"/ size="35" >
+            </p>
+            <p>
+                <button id="sendButton">Senden</button>
+                <button id="usernameButton">Namen &auml;ndern</button>
+                <button id="userButton">Users online</button>
+                <button id="test">Testlauf</button>
+            </p>
+        </div>
+        <div>
+            <ul id="messages">
+            </ul>
+        </div>
+
+        <style type="text/css">
+            .servermessage {
+                color: blue;
+            }
+
+            .usersonline {
+                color: green;
+            }
+
+            .history {
+                color: #999;
+            }
+        </style>
+        
+        <script type="text/javascript" src="http://code.jquery.com/jquery-1.5.2.js"></script>
+        
+        <script>
+
+            $(function() {
+
+            // Parameter
+            var serverurl = 'http://localhost:8000';
+            var clientname = 'Gast';
+
+            /** Objekt dass Serverconnection herstellt und verwaltet */
+            var webSocket = io.connect(serverurl);
+
+            /** Lösche Message Box bei Browser-Aktualisierung */
+            $('#messages').text('');
+
+            /** Deaktiviere Eingabe bis Connection und Username gesetzt sind */
+            $('button').attr('disabled', true);
+
+            /** Server Verbindung wird erstmalig hergestellt */
+            webSocket.on('connect', function() {
+                
+                // Username setzen
+                username = prompt("Dein Username?","");
+
+                webSocket.emit('username', username);
+
+                // Schalte Input und Buttons frei
+                $('button').attr('disabled', false);
+
+            });
+
+            /** Server sendet Nachricht an Client */
+            webSocket.on('message', function(data) {
+
+                var msg = '<li class="message">' + data + '</li>';
+
+                $('#messages').append(msg);
+
+            });
+
+            /** Server sendet Servermessage an Client */
+            webSocket.on('servermessage', function(data) {
+
+                var msg = '<li class="servermessage">' + data + '</li>';
+                $('#messages').append(msg);
+
+            });
+
+            webSocket.on('history', function(data) {
+                
+                var html = '<li class="history">' + data + '</li>';
+                $('#messages').append(html);
+
+            });
+
+            webSocket.on('usersonline', function(data) {
+
+                var html = '<li class="usersonline">' + data + '</li>';
+                $('#messages').append(html);
+
+            });
+
+
+            /** Verbindung zum Server getrennt */
+            webSocket.on('disconnect', function(data) {
+
+                $('#messages').append('<li>Disconnected from the server.</li>');
+
+                $('button').attr('disabled', true);
+
+            });
+
+
+            /** Event-Handler: Senden Button gedrückt. BESSER: Enter Button!*/
+            $('#sendButton').bind('click', function() {
+
+                // Nachricht auslesen
+                var message = $('#messageText').val();
+
+                if (message) {
+
+                    // Nachricht versenden
+                    webSocket.send(message);
+
+                    // Textbox leeren
+                    $('#messageText').val('');
+                }
+
+            });
+
+            $('#usernameButton').bind('click', function() {
+
+                // Nachricht auslesen
+                var username = $('#messageText').val();
+
+                if (username) {
+                    // Nachricht versenden
+                    webSocket.emit('username', username);
+
+                    // Textbox leeren
+                    $('#messageText').val('');
+                }
+
+                
+            });
+
+            $('#userButton').bind('click', function() {
+
+                // Nachricht versenden
+                webSocket.emit('usersonline', { my: 'data' });
+
+            });
+
+            /** Kleine Test-Suite die verschiedene Server Interaktionen testet */
+            $('#test').bind('click', function() {
+
+                // Verschiedene Aktionen testen:
+                var temp = clientname;
+
+                // Usernamen ändern:
+                setTimeout(function() {
+                    webSocket.emit('username', 'Testlauf'); 
+                }, 500);
+                
+                // Nachricht schreiben
+                setTimeout(function() {
+                    webSocket.send('AUTOMATISCHER TEST');
+                }, 1000);
+                
+                // Frage Users online an:
+                setTimeout(function() {
+                    webSocket.emit('usersonline');
+                }, 1500);
+
+                // Usernamen zurücksetzen
+                setTimeout(function() {
+                    webSocket.emit('username', temp);
+                }, 2000);
+
+                
+
+            });
+
+        });
+
+
+
+        </script>
+        <script src="http://localhost:8000/socket.io/socket.io.js"></script>
+    </body>
+</html>
